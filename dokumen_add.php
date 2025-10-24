@@ -35,6 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $sql = "INSERT INTO dokumen (nama_dokumen, bulan_tahun, file_pdf) VALUES ('$nama_dokumen', '$bulan_tahun', '$file_pdf')";
     if (mysqli_query($conn, $sql)) {
+        $dokumen_id = mysqli_insert_id($conn);
+        // Log the add action
+        $user_id = $_SESSION['user_id'];
+        $log_sql = "INSERT INTO logs (user_id, action, dokumen_id, details) VALUES ($user_id, 'add', $dokumen_id, 'Added new dokumen: $nama_dokumen')";
+        mysqli_query($conn, $log_sql);
         header("Location: dokumen.php");
     } else {
         echo "Error: " . $sql . "<br>" . mysqli_error($conn);

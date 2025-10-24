@@ -71,8 +71,10 @@ $result = mysqli_query($conn, $sql);
             <a class="nav-link" href="rekap.php"><i class="fas fa-chart-bar"></i> Laporan Rekap</a>
             <?php if ($_SESSION['role'] == 'admin') { ?>
                 <a class="nav-link" href="users.php"><i class="fas fa-users"></i> Kelola User</a>
-                <a class="nav-link" href="settings.php"><i class="fas fa-cogs"></i> Pengaturan</a>
+                <a class="nav-link" href="logs.php"><i class="fas fa-history"></i> Log Aktivitas</a>
                 <a class="nav-link" href="restore.php"><i class="fas fa-undo"></i> Restore Data</a>
+                <a class="nav-link" href="backup.php"><i class="fas fa-download"></i> Backup Database</a>
+                <a class="nav-link" href="settings.php"><i class="fas fa-cogs"></i> Pengaturan</a>
             <?php } ?>
         </nav>
     </div>

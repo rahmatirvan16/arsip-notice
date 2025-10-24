@@ -11,6 +11,10 @@ $id = $_GET['id'];
 
 $sql = "UPDATE dokumen SET status = 'inactive' WHERE id = $id";
 if (mysqli_query($conn, $sql)) {
+    // Log the delete action
+    $user_id = $_SESSION['user_id'];
+    $log_sql = "INSERT INTO logs (user_id, action, dokumen_id, details) VALUES ($user_id, 'delete', $id, 'Set dokumen to inactive status')";
+    mysqli_query($conn, $log_sql);
     header("Location: dokumen.php");
 } else {
     echo "Error updating record: " . mysqli_error($conn);

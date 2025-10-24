@@ -66,6 +66,7 @@ $sql = "CREATE TABLE IF NOT EXISTS logs (
     user_id INT NOT NULL,
     action VARCHAR(50) NOT NULL,
     notice_id INT,
+    dokumen_id INT,
     details TEXT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -75,6 +76,14 @@ if (mysqli_query($conn, $sql)) {
     echo "Table logs created successfully<br>";
 } else {
     echo "Error creating table logs: " . mysqli_error($conn) . "<br>";
+}
+
+// Add dokumen_id column if not exists (for existing installations)
+$sql = "ALTER TABLE logs ADD COLUMN IF NOT EXISTS dokumen_id INT";
+if (mysqli_query($conn, $sql)) {
+    echo "dokumen_id column added to logs table or already exists<br>";
+} else {
+    echo "Error adding dokumen_id column: " . mysqli_error($conn) . "<br>";
 }
 
 // Create settings table
