@@ -6,7 +6,9 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
 
 $app = AppFactory::create();
-
+ 
+// Set base path so routes are available under /api when using router.php
+$app->setBasePath('/api');
 // Include database connection
 require 'db.php';
 
@@ -90,10 +92,18 @@ $app->get('/pdf/{id}', function (Request $request, Response $response, $args) us
         return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
     }
 
-    // Serve the PDF file
-    $fileContent = file_get_contents('uploads/' . $filePath);
-    $response->getBody()->write($fileContent);
-    return $response->withHeader('Content-Type', 'application/pdf');
+    // Serve the PDF file using a stream and proper headers
+    $fullPath = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . $filePath;
+    $filesize = filesize($fullPath);
+
+    $stream = new \Slim\Psr7\Stream(fopen($fullPath, 'rb'));
+    $response = $response->withBody($stream)
+        ->withHeader('Content-Type', 'application/pdf')
+        ->withHeader('Content-Disposition', 'inline; filename="' . basename($filePath) . '"')
+        ->withHeader('Content-Length', (string)$filesize)
+        ->withHeader('Cache-Control', 'public, max-age=3600');
+
+    return $response;
 });
 
 $app->run();

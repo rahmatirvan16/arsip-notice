@@ -11,7 +11,7 @@ X-API-Key: secret123
 
 ## Endpoints
 
-### GET /pdfs
+### GET /api/pdfs
 
 Returns a JSON list of available PDFs.
 
@@ -31,7 +31,8 @@ Returns a JSON list of available PDFs.
 ]
 ```
 
-### GET /pdf/{id}
+
+### GET /api/pdf/{id}
 
 Serves the PDF file with the specified ID.
 
@@ -48,25 +49,25 @@ Serves the PDF file with the specified ID.
 
 ## Usage Examples
 
-Using curl:
+Using curl (or PowerShell):
 
 ```bash
 # List PDFs
-curl -H "X-API-Key: secret123" http://localhost:8000/pdfs
+curl -H "X-API-Key: secret123" http://localhost:8000/api/pdfs
 
-# Get specific PDF
-curl -H "X-API-Key: secret123" http://localhost:8000/pdf/notice_1 -o file.pdf
+# Get specific PDF and save to file
+curl -H "X-API-Key: secret123" http://localhost:8000/api/pdf/notice_1 -o file.pdf
 ```
 
 ## Running the API
 
-Use PHP built-in server:
+Use PHP built-in server with the included `router.php` so API routes under `/api` are handled correctly:
 
-```bash
-php -S localhost:8000 -t . api.php
+```powershell
+php -S localhost:8000 router.php
 ```
 
-Then access at http://localhost:8000/pdfs
+Then access at http://localhost:8000/api/pdfs
 
 ## Security Notes
 
