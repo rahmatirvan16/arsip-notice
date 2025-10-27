@@ -1,0 +1,65 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-10-26T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2025.4.0",
+  "resources": [
+    {
+      "_id": "wrk_arsip_notice",
+      "_type": "workspace",
+      "name": "Arsip Notice API",
+      "description": "Collection for Arsip Notice PDF API",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_arsip_notice",
+      "_type": "environment",
+      "parentId": "wrk_arsip_notice",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8000",
+        "X_API_KEY": "secret123",
+        "example_id": "notice_1"
+      }
+    },
+    {
+      "_id": "req_list_pdfs",
+      "_type": "request",
+      "parentId": "wrk_arsip_notice",
+      "name": "List PDFs",
+      "method": "GET",
+      "url": "{{ base_url }}/api/pdfs",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "X-API-Key",
+          "value": "{{ X_API_KEY }}"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {}
+    },
+    {
+      "_id": "req_download_pdf",
+      "_type": "request",
+      "parentId": "wrk_arsip_notice",
+      "name": "Download PDF (by id)",
+      "method": "GET",
+      "url": "{{ base_url }}/api/pdf/{{ example_id }}",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "X-API-Key",
+          "value": "{{ X_API_KEY }}"
+        }
+      ],
+      "authentication": {},
+      "description": "Replace {{ example_id }} with id from the List PDFs response (e.g. notice_1 or dokumen_1). Use the response "
+    }
+  ]
+}

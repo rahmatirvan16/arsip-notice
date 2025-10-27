@@ -1,5 +1,8 @@
 <?php
-session_start();
+// Start session only if not already started to avoid "session already started" notices
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include 'db.php';
 
 // Fetch settings for dynamic display

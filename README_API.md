@@ -31,6 +31,28 @@ Returns a JSON list of available PDFs.
 ]
 ```
 
+### GET /api/search
+
+Searches for a PDF by notice number or document name.
+
+**Parameters:**
+- `query`: The search query (notice number or document name)
+
+**Response:**
+```json
+{
+  "id": "notice_1",
+  "name": "CD025-0000001",
+  "type": "notice"
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "PDF not found"
+}
+```
 
 ### GET /api/pdf/{id}
 

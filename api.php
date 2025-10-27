@@ -6,25 +6,13 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
 
 $app = AppFactory::create();
- 
-// Set base path so routes are available under /api when using router.php
-$app->setBasePath('/api');
-// Include database connection
+// Include database connection early so handlers can use $conn
 require 'db.php';
 
-// Middleware for API key authentication
-$app->add(function (Request $request, $handler) {
-    $apiKey = $request->getHeaderLine('X-API-Key');
-    if (empty($apiKey) || $apiKey !== 'secret123') { // Replace with actual API key validation
-        $response = new \Slim\Psr7\Response();
-        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
-    }
-    return $handler->handle($request);
-});
+// Helper handlers so we can register routes with and without the /api prefix
 
-// GET /api/pdfs - List all available PDFs
-$app->get('/pdfs', function (Request $request, Response $response, $args) use ($conn) {
+// Handler: list PDFs
+$listPdfsHandler = function (Request $request, Response $response, $args) use ($conn) {
     $pdfs = [];
 
     // Get PDFs from notices table
@@ -51,10 +39,91 @@ $app->get('/pdfs', function (Request $request, Response $response, $args) use ($
 
     $response->getBody()->write(json_encode($pdfs));
     return $response->withHeader('Content-Type', 'application/json');
-});
+};
 
-// GET /pdf/{id} - Serve specific PDF file
-$app->get('/pdf/{id}', function (Request $request, Response $response, $args) use ($conn) {
+// Handler: search PDF by notice number or document name
+$searchPdfHandler = function (Request $request, Response $response, $args) use ($conn) {
+    $query = $request->getQueryParams()['query'] ?? '';
+
+    if (empty($query)) {
+        $response->getBody()->write(json_encode(['error' => 'Query parameter is required']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+    }
+
+    $pdf = null;
+
+    // Search in notices table by nomor_notice (exact match first, then partial)
+    $sql_notices_exact = "SELECT id, nomor_notice as name, file_pdf FROM notices WHERE nomor_notice = ? AND status = 'active' AND file_pdf IS NOT NULL AND file_pdf != ''";
+    $stmt_notices_exact = mysqli_prepare($conn, $sql_notices_exact);
+    mysqli_stmt_bind_param($stmt_notices_exact, 's', $query);
+    mysqli_stmt_execute($stmt_notices_exact);
+    $result_notices_exact = mysqli_stmt_get_result($stmt_notices_exact);
+
+    if ($row = mysqli_fetch_assoc($result_notices_exact)) {
+        $pdf = [
+            'id' => 'notice_' . $row['id'],
+            'name' => $row['name'],
+            'type' => 'notice'
+        ];
+    } else {
+        // Search in notices table by nomor_notice (partial match)
+        $sql_notices = "SELECT id, nomor_notice as name, file_pdf FROM notices WHERE nomor_notice LIKE ? AND status = 'active' AND file_pdf IS NOT NULL AND file_pdf != ''";
+        $stmt_notices = mysqli_prepare($conn, $sql_notices);
+        $searchTerm = '%' . $query . '%';
+        mysqli_stmt_bind_param($stmt_notices, 's', $searchTerm);
+        mysqli_stmt_execute($stmt_notices);
+        $result_notices = mysqli_stmt_get_result($stmt_notices);
+
+        if ($row = mysqli_fetch_assoc($result_notices)) {
+            $pdf = [
+                'id' => 'notice_' . $row['id'],
+                'name' => $row['name'],
+                'type' => 'notice'
+            ];
+        } else {
+            // Search in dokumen table by nama_dokumen (exact match first, then partial)
+            $sql_dokumen_exact = "SELECT id, nama_dokumen as name, file_pdf FROM dokumen WHERE nama_dokumen = ? AND status = 'active' AND file_pdf IS NOT NULL AND file_pdf != ''";
+            $stmt_dokumen_exact = mysqli_prepare($conn, $sql_dokumen_exact);
+            mysqli_stmt_bind_param($stmt_dokumen_exact, 's', $query);
+            mysqli_stmt_execute($stmt_dokumen_exact);
+            $result_dokumen_exact = mysqli_stmt_get_result($stmt_dokumen_exact);
+
+            if ($row = mysqli_fetch_assoc($result_dokumen_exact)) {
+                $pdf = [
+                    'id' => 'dokumen_' . $row['id'],
+                    'name' => $row['name'],
+                    'type' => 'dokumen'
+                ];
+            } else {
+                // Search in dokumen table by nama_dokumen (partial match)
+                $sql_dokumen = "SELECT id, nama_dokumen as name, file_pdf FROM dokumen WHERE nama_dokumen LIKE ? AND status = 'active' AND file_pdf IS NOT NULL AND file_pdf != ''";
+                $stmt_dokumen = mysqli_prepare($conn, $sql_dokumen);
+                mysqli_stmt_bind_param($stmt_dokumen, 's', $searchTerm);
+                mysqli_stmt_execute($stmt_dokumen);
+                $result_dokumen = mysqli_stmt_get_result($stmt_dokumen);
+
+                if ($row = mysqli_fetch_assoc($result_dokumen)) {
+                    $pdf = [
+                        'id' => 'dokumen_' . $row['id'],
+                        'name' => $row['name'],
+                        'type' => 'dokumen'
+                    ];
+                }
+            }
+        }
+    }
+
+    if (!$pdf) {
+        $response->getBody()->write(json_encode(['error' => 'PDF not found']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(404);
+    }
+
+    $response->getBody()->write(json_encode($pdf));
+    return $response->withHeader('Content-Type', 'application/json');
+};
+
+// Handler: serve PDF by id
+$servePdfHandler = function (Request $request, Response $response, $args) use ($conn) {
     $id = $args['id'];
     $filePath = null;
 
@@ -104,6 +173,29 @@ $app->get('/pdf/{id}', function (Request $request, Response $response, $args) us
         ->withHeader('Cache-Control', 'public, max-age=3600');
 
     return $response;
+};
+// (db connection already included above)
+
+// Middleware for API key authentication (skip for PDF serving)
+$app->add(function (Request $request, $handler) {
+    $path = $request->getUri()->getPath();
+    if (strpos($path, '/api/pdf/') === 0) {
+        // Skip authentication for PDF serving to allow iframe display
+        return $handler->handle($request);
+    }
+
+    $apiKey = $request->getHeaderLine('X-API-Key');
+    if (empty($apiKey) || $apiKey !== 'secret123') { // Replace with actual API key validation
+        $response = new \Slim\Psr7\Response();
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(401);
+    }
+    return $handler->handle($request);
 });
+
+// Register routes under /api (router.php includes this file only for /api/* requests)
+$app->get('/api/pdfs', $listPdfsHandler);
+$app->get('/api/search', $searchPdfHandler);
+$app->get('/api/pdf/{id}', $servePdfHandler);
 
 $app->run();
