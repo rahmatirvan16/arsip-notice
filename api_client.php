@@ -6,7 +6,15 @@ $pdf_name = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['search'])) {
     $query = trim($_POST['query']);
     if (!empty($query)) {
-        // Try connecting to API on multiple local ports (fallback) to avoid timeouts when one server isn't running
+    // Determine API host to use when building URLs. If the client is remote,
+    // using the page host instead of literal "localhost" ensures the iframe
+    // points to the server address the client can reach (e.g. 192.168.x.x).
+    // Fallback to localhost when HTTP_HOST is not available.
+    $requestHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $hostOnly = explode(':', $requestHost)[0];
+    $apiHost = $hostOnly ?: 'localhost';
+
+    // Try connecting to API on multiple local ports (fallback) to avoid timeouts when one server isn't running
         $api_key = 'secret123'; // Predefined secret key for API access
         $portsToTry = [8005, 8000];
         $response = false;
@@ -14,7 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['search'])) {
         $lastError = '';
 
         foreach ($portsToTry as $port) {
-            $api_url = 'http://localhost:' . $port . '/api/search?query=' . urlencode($query);
+            // Build the API URL using the resolved API host so remote clients
+            // don't try to contact their own localhost.
+            $api_url = 'http://' . $apiHost . ':' . $port . '/api/search?query=' . urlencode($query);
 
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $api_url);
@@ -47,7 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['search'])) {
             if ($http_code == 200) {
                 $data = json_decode($response, true);
                 if ($data !== null && isset($data['id'])) {
-                    $pdf_url = 'http://localhost:' . $port . '/api/pdf/' . $data['id'];
+                    // Use the same resolved host for PDF URL so iframe from remote
+                    // machines points to the actual server address.
+                    $pdf_url = 'http://' . $apiHost . ':' . $port . '/api/pdf/' . $data['id'];
                     $pdf_name = $data['name'];
                     $message = 'PDF ditemukan: ' . $pdf_name;
                 } else {
